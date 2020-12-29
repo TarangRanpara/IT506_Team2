@@ -1,8 +1,13 @@
-This repo contains code for IT506 course project "Speeding Up Jacobi Eigenvalue Algorithm using HPC" under Prof. Bhaskar Choudhary. 
+This repo contains code for IT506 course project "Speeding Up Jacobi Eigenvalue Algorithm using HPC" under Prof. Bhaskar Choudhary.
+
 Team2
+
 Shivangi Gajjar 202011023
+
 Vaidik Patel 202011038
+
 Mantra Sanathra 202011041
+
 Tarang Ranpara 202011057
 
 How to Run?
