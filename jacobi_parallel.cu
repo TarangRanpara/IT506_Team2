@@ -3,7 +3,6 @@
 #include <ratio>
 #include <chrono>
 using namespace std;
-#define TILE_DIM 16
 #define CONV_THRESHOLD 1e-3
 
 bool check_convergence(int N, double* D, double* D_new){
@@ -12,7 +11,6 @@ bool check_convergence(int N, double* D, double* D_new){
 		double diff = D_new[i*N + i] - D[i*N + i];
 		if(diff<0) sqr_diff -= diff;
 		else sqr_diff += diff;
-		// if(sqr_diff > CONV_THRESHOLD) return false;
 	}
 	cout << sqr_diff << endl;
 	return (sqr_diff < CONV_THRESHOLD);
@@ -42,8 +40,6 @@ __global__ void pq_change(int N, int *p, int*q){
    	int valp = min(ind1, ind2);
    	int valq = max(ind1, ind2);
 
-   	// printf("%d %d\n", valp, valq);
-
    	p[i*(N)/2 + tid] = valp;
    	q[i*(N)/2 + tid] = valq;
 }
@@ -55,16 +51,10 @@ __global__ void cosandsin(int *N, double *D, double *c, double *s, int *pcurr, i
 	int row = pcurr[tid];
 	int col = qcurr[tid];
 
-	// printf("[@] Inside cossin update: \n" );
-
-	// printf("[@] row col: %d %double\n\n", row, col);
-
 	double p = D[row*(*N) + col];
     double y = (D[col*(*N) + col] - D[row*(*N) + row]) / 2.0;
     double d = fabs(y) + sqrt(p*p + y*y);
     double r = sqrt(p*p + d*d);
-
-    // printf("%f %f %f %f\n", p, y, d, r);
 
     if(fabs(p) < CONV_THRESHOLD && fabs(d) < CONV_THRESHOLD){
     	c[tid] = 1.0;
@@ -75,7 +65,6 @@ __global__ void cosandsin(int *N, double *D, double *c, double *s, int *pcurr, i
 		s[tid] = (fabs(y)/y)*(p / r);
     }
 
-    // printf("%d: %f %f\n\n\n\n",tid, (double)c[tid], (double)s[tid] );
 }
 
 
@@ -108,7 +97,6 @@ __global__ void rotate_rows(int* N, double* D, double* out, double* c, double* s
 
 
 	out[i*(*N)+p] = co*val1 - si*val2;
-	// out[i*(*N)+q] = si*val1 + co*val2;
 
 }
 
@@ -129,7 +117,6 @@ __global__ void rotate_rows2(int* N, double* D, double* out, double* c, double* 
 	double val1 = D[p*(*N)+i];
 	double val2 = D[q*(*N)+i];
 
-	// out[i*(*N)+p] = co*val1 - si*val2;
 	out[i*(*N)+q] = si*val1 + co*val2;
 
 }
@@ -150,16 +137,8 @@ __global__ void rotate_cols(int* N, double* D, double* out, double* c, double* s
 	double val1 = D[p*(*N)+i];
 	double val2 = D[q*(*N)+i];
 
-	// double val3 = D1[i*(*N)+p];
-	// double val4 = D1[i*(*N)+q];
-
-
 	out[p*(*N)+i] = co*val1 - si*val2;
 	out[q*(*N)+i] = si*val1 + co*val2;
-
-	// out1[i*(*N)+p] = co*val3 - si*val4;
-	// out1[i*(*N)+q] = si*val3 + co*val4;
-
 
 }
 
@@ -204,11 +183,6 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 	cudaMalloc((void**)&eignevecs_D, sizeof(double)*N*N);
 	cudaMalloc((void**)&eignevecs_D_temp, sizeof(double)*N*N);
 
-
-	// for(int i=0; i<N*N; i++){
-	// 	eigenvals[i] = D[i];
-	// }
-
 	cudaMemcpy(dD, D, sizeof(double)*N*N, cudaMemcpyHostToDevice);
 	cudaMemcpy(Dtemp, D, sizeof(double)*N*N, cudaMemcpyHostToDevice);
 	
@@ -218,11 +192,8 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 	int *dN, *dp, *dq;
 	double *c, *s;
 	cudaMalloc((void **)&dN, sizeof(int));
-	// cudaMalloc((void **)&di, sizeof(int));
 	cudaMalloc((void **)&c, sizeof(double)*N/2);
 	cudaMalloc((void **)&s, sizeof(double)*N/2);
-
-	// print_matrix("D", N, N, D);
 
 	cudaMemcpy(dN, &N, sizeof(int), cudaMemcpyHostToDevice);
 
@@ -230,8 +201,6 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 	double conv = false;
 	t2 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-
-  	// std::cout << "[@]Initial Jacobi time: " << time_span.count() << " seconds.\n";
 
 	cudaMalloc((void **)&dp, sizeof(int)*N*(N-1)/2);
 	cudaMalloc((void **)&dq, sizeof(int)*N*(N-1)/2);
@@ -246,7 +215,6 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 	
 
 	cudaDeviceSynchronize(); 
-	// print_matrix("D", 4, 4, D);
 	int sweeps = 0;
 	while(!conv){
 		t1 = std::chrono::high_resolution_clock::now();
@@ -255,47 +223,28 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 
 		if(N%2 != 0) N1 = N;
 		else N1 = N-1;
-		// if(N%2 != 0) N2 = N-1;
-		// else N2 = N;
 		for(int i=0; i<N1; i++){
 			int *currp = dp+(i*(N/2));
 			int *currq = dq+(i*(N/2));
-			// cudaMemcpy(di, &i, sizeof(int), cudaMemcpyHostToDevice);
-
-			// cudaMemcpy(eigenvals, dD, sizeof(double)*N*N, cudaMemcpyDeviceToHost);
-			// print_matrix("eigenvals", N, N, eigenvals);
-			// printf("Printing finished\n");
 
 			cossin<<<N/2, 1>>>(dN, dD, c, s, currp, currq);
 			cudaDeviceSynchronize();
-			// printf("cosandsin updated\n");
 			rotate_rows<<<N/2, N>>>(dN, dD, Dtemp, c, s, currp, currq);
 			rotate_rows2<<<N/2, N>>>(dN, dD, Dtemp, c, s, currp, currq);
-			
-			// cudaMemcpy(eigenvals, Dtemp, sizeof(double)*N*N, cudaMemcpyDeviceToHost);
-			// print_matrix("After row update", N, N, eigenvals);
 
 			cudaDeviceSynchronize();
-		    // dim3 dimBlock(N, 2);
 
 			rotate_cols<<<N/2, N>>>(dN, Dtemp, dD, c, s, currp, currq);
-			
-			// cudaMemcpy(eigenvals, dD, sizeof(double)*N*N, cudaMemcpyDeviceToHost);
-			// print_matrix("After col update", N, N, eigenvals);
 
-			// cudaDeviceSynchronize();
 			rotate_cols<<<N/2, N>>>(dN, eignevecs_D, eignevecs_D_temp, c, s, currp, currq);
 			cudaDeviceSynchronize();
 			get_ev<<<N, N>>>(eignevecs_D_temp, eignevecs_D);
 			cudaDeviceSynchronize();
-			// while();
 
 		}
-		// while(true){};
 
 		cudaMemcpy(Dvoidtemp, dD, sizeof(double)*N*N, cudaMemcpyDeviceToHost);
 
-		// print_matrix("D", 4, 4, D);
 
 		cout << "Sweep " << ++sweeps << ": ";
 
@@ -307,14 +256,10 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 		double* tempor = eigenvals;
 		eigenvals = Dvoidtemp;
 		Dvoidtemp = tempor;
-
-		// dD = Dtemp2;
 		double valdiff = check_eigenvals(N, eigenvals);
-		// cout << "Valdiff: " << valdiff << endl;
-		// std::cout << "[@]Time taken: " << time_span.count() << " seconds.\n";
 
 	}
-	// print_matrix("Eigenvals", N, N, eigenvals);
+
 	double* eigenvecs_temp = (double*)malloc(sizeof(double)*N*N);
 	cudaMemcpy(eigenvecs_temp, eignevecs_D, sizeof(double)*N*N, cudaMemcpyDeviceToHost);
 	for(int i=0; i<N; i++){
@@ -335,8 +280,6 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 		free(eigenvecs);
 	}
 
-	// free(eigenvecs);
-	// free(eigenvals);
 	free(eigenvecs_temp);
 
 	cudaFree(dD);
@@ -345,16 +288,9 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 	cudaFree(c);
 	cudaFree(s);
 	cudaFree(dp);
-	// cudaFree(di)
 	cudaFree(dq);
 	cudaFree(eignevecs_D);
 	cudaFree(eignevecs_D_temp);
-
-	// free(Dvoidtemp);
-
-
-	// print_matrix("D", N, N, D);
-	// eigenvals = D;
 }
 int main(){
 	ofstream ofile;
