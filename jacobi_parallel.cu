@@ -28,7 +28,6 @@ double check_eigenvals(int N, double* D){
 	return out;
 }
 __global__ void pq_change(int N, int *p, int*q){
-	// printf("Updating PQ\n");
 	int tid = threadIdx.x;
 	int i = blockIdx.x;
 
@@ -45,9 +44,7 @@ __global__ void pq_change(int N, int *p, int*q){
 }
 
 __global__ void cosandsin(int *N, double *D, double *c, double *s, int *pcurr, int *qcurr){
-	// printf("Inside cossin\n");
 	int tid = threadIdx.x + blockIdx.x*blockDim.x;
-	// printf("%d\n", tid);
 	int row = pcurr[tid];
 	int col = qcurr[tid];
 
@@ -77,16 +74,10 @@ __global__ void rotate_rows(int* N, double* D, double* out, double* c, double* s
 		q = qcurr[blockIdx.x];
 		co = c[blockIdx.x];
 		si = s[blockIdx.x];
-		// printf("[@] Inside Row update: \n" );
-		// printf("%d %d %f %f \n", p, q, co, si);
 	
 	}
 
-
-
 	__syncthreads();
-
-
 
 	int i = threadIdx.x;
 
@@ -172,7 +163,6 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 		ENEW[N*N - 1] = 1;
 		eigenvals = D;
 		eigenvecs = ENEW;
-		// printf("Done\n");
 	}
 
 	double *dD, *Dtemp, *eignevecs_D, *eignevecs_D_temp;
@@ -244,9 +234,6 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 		}
 
 		cudaMemcpy(Dvoidtemp, dD, sizeof(double)*N*N, cudaMemcpyDeviceToHost);
-
-
-		cout << "Sweep " << ++sweeps << ": ";
 
 		conv = check_convergence(N, eigenvals, Dvoidtemp);
 		t2 = std::chrono::high_resolution_clock::now();
