@@ -67,6 +67,14 @@ def jacobi(a, tol=1.0e-9):
 
 f = open('input_128.txt','r')
 
+def gen_non_singular_matrix(n):
+    while True:
+        A = np.random.rand(n, n)
+        if np.linalg.matrix_rank(A) == n:
+            break
+
+    return A.T * A
+
 
 a = gen_non_singular_matrix(2 ** 7)
 st = time.time()
