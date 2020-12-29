@@ -76,17 +76,11 @@ __global__ void rotate_rows(int* N, double* D, double* out, double* c, double* s
 		si = s[blockIdx.x];
 	
 	}
-
 	__syncthreads();
 
 	int i = threadIdx.x;
-
-
 	double val1 = D[p*(*N)+i];
 	double val2 = D[q*(*N)+i];
-
-
-
 	out[i*(*N)+p] = co*val1 - si*val2;
 
 }
@@ -109,7 +103,6 @@ __global__ void rotate_rows2(int* N, double* D, double* out, double* c, double* 
 	double val2 = D[q*(*N)+i];
 
 	out[i*(*N)+q] = si*val1 + co*val2;
-
 }
 
 __global__ void rotate_cols(int* N, double* D, double* out, double* c, double* s, int* pcurr, int* qcurr){
@@ -196,14 +189,12 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 	cudaMalloc((void **)&dq, sizeof(int)*N*(N-1)/2);
 	pq_change<<<N-1, N/2>>>(N, dp, dq);
 
-
 	int *p = (int*)malloc(sizeof(int)*N*(N-1)/2);
 	int *q = (int*)malloc(sizeof(int)*N*(N-1)/2);
 
 	cudaMemcpy(p, dp, sizeof(int)*N*(N-1)/2, cudaMemcpyDeviceToHost);
 	cudaMemcpy(q, dq, sizeof(int)*N*(N-1)/2, cudaMemcpyDeviceToHost);
 	
-
 	cudaDeviceSynchronize(); 
 	int sweeps = 0;
 	while(!conv){
@@ -218,7 +209,9 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 			int *currq = dq+(i*(N/2));
 
 			cossin<<<N/2, 1>>>(dN, dD, c, s, currp, currq);
+			
 			cudaDeviceSynchronize();
+			
 			rotate_rows<<<N/2, N>>>(dN, dD, Dtemp, c, s, currp, currq);
 			rotate_rows2<<<N/2, N>>>(dN, dD, Dtemp, c, s, currp, currq);
 
@@ -227,8 +220,11 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 			rotate_cols<<<N/2, N>>>(dN, Dtemp, dD, c, s, currp, currq);
 
 			rotate_cols<<<N/2, N>>>(dN, eignevecs_D, eignevecs_D_temp, c, s, currp, currq);
+			
 			cudaDeviceSynchronize();
+			
 			get_ev<<<N, N>>>(eignevecs_D_temp, eignevecs_D);
+			
 			cudaDeviceSynchronize();
 
 		}
@@ -238,8 +234,6 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 		conv = check_convergence(N, eigenvals, Dvoidtemp);
 		t2 = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-
-
 		double* tempor = eigenvals;
 		eigenvals = Dvoidtemp;
 		Dvoidtemp = tempor;
@@ -280,14 +274,14 @@ void jacobi_parallel(int N, double* D, double* eigenvecs_out, double* eigenvals_
 	cudaFree(eignevecs_D_temp);
 }
 int main(){
-	ofstream ofile;
-	ofile.open("output.txt");
+	//ofstream ofile;
+	//ofile.open("output.txt"); //Just incase results need to be stored in file
 	cudaEvent_t start,end;
 	for(int size=2;size<=512;size*=2){
 		cudaEventCreate(&start);
-        cudaEventCreate(&end);	
+                cudaEventCreate(&end);	
 		fstream infile;
-		infile.open("input_"+to_string(size)+".txt");
+		infile.open("input_"+to_string(size)+".txt"); //Reading input matrices from input files
 		int N;
 		infile>>N;
 		cudaEventRecord(start);
@@ -310,14 +304,17 @@ int main(){
 		infile.close();
 
 		cudaThreadSynchronize();
-        cudaEventRecord(end);
-        cudaEventSynchronize(end);
-        float milliseconds=0;
+                cudaEventRecord(end);
+                cudaEventSynchronize(end);
+                float milliseconds=0;
 		cudaEventElapsedTime(&milliseconds,start,end);
-		ofile<<size<<":"<<milliseconds*1000<<"\n";
+		cout<<size<<":"<<milliseconds*1000<<"\n";
+		
+		//For putting results in file 
+		//ofile<<size<<":"<<milliseconds*1000<<"\n";
 		}
 	
-		ofile.close();
+		//ofile.close(); //Incase of file
 		return 0;
 	
 	
